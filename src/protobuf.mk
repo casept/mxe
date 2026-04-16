@@ -1,35 +1,48 @@
 # This file is part of MXE. See LICENSE.md for licensing information.
 
 PKG             := protobuf
-$(PKG)_WEBSITE  := https://github.com/google/protobuf
+$(PKG)_WEBSITE  := https://github.com/protocolbuffers/protobuf
 $(PKG)_IGNORE   :=
-$(PKG)_VERSION  := 3.9.0
-$(PKG)_CHECKSUM := 2ee9dcec820352671eb83e081295ba43f7a4157181dad549024d7070d079cf65
-$(PKG)_GH_CONF  := google/protobuf/tags,v
-$(PKG)_DEPS     := cc googlemock googletest zlib $(BUILD)~$(PKG)
+$(PKG)_VERSION  := 34.1
+$(PKG)_CHECKSUM := e4e6ff10760cf747a2decd1867741f561b216bd60cc4038c87564713a6da1848
+$(PKG)_GH_CONF  := protocolbuffers/protobuf/releases,v
+$(PKG)_DEPS     := cc abseil-cpp zlib $(BUILD)~$(PKG)
 $(PKG)_TARGETS  := $(BUILD) $(MXE_TARGETS)
-$(PKG)_DEPS_$(BUILD) := googlemock googletest libtool
+$(PKG)_DEPS_$(BUILD) := abseil-cpp
 
 define $(PKG)_BUILD
-    $(call PREPARE_PKG_SOURCE,googlemock,$(SOURCE_DIR))
-    cd '$(SOURCE_DIR)' && mv '$(googlemock_SUBDIR)' gmock
-    $(call PREPARE_PKG_SOURCE,googletest,$(SOURCE_DIR))
-    cd '$(SOURCE_DIR)' && mv '$(googletest_SUBDIR)' gmock/gtest
-    cd '$(SOURCE_DIR)' && ./autogen.sh
+    cd '$(BUILD_DIR)' && '$(TARGET)-cmake' '$(SOURCE_DIR)' \
+        -DCMAKE_CXX_STANDARD=17 \
+        -Dprotobuf_BUILD_TESTS=OFF \
+        -Dprotobuf_BUILD_CONFORMANCE=OFF \
+        -Dprotobuf_BUILD_EXAMPLES=OFF \
+        -Dprotobuf_WITH_ZLIB=ON \
+        -Dprotobuf_BUILD_PROTOC_BINARIES=OFF \
+        -Dprotobuf_BUILD_LIBPROTOC=OFF \
+        -DWITH_PROTOC='$(PREFIX)/$(BUILD)/bin/protoc' \
+        -Dprotobuf_LOCAL_DEPENDENCIES_ONLY=ON \
+        -Dprotobuf_ABSL_PROVIDER=package
+    '$(TARGET)-cmake' --build '$(BUILD_DIR)' --config Release -j '$(JOBS)'
+    '$(TARGET)-cmake' --build '$(BUILD_DIR)' --config Release --target install
 
-    cd '$(BUILD_DIR)' && '$(SOURCE_DIR)'/configure \
-        $(MXE_CONFIGURE_OPTS) \
-        $(if $(BUILD_CROSS), \
-            --with-zlib \
-            --with-protoc='$(PREFIX)/$(BUILD)/bin/protoc' \
-        )
-    $(MAKE) -C '$(BUILD_DIR)' -j '$(JOBS)'
-    $(MAKE) -C '$(BUILD_DIR)' -j 1 install
+    '$(TARGET)-g++' \
+        -W -Wall -Werror -std=c++17 \
+        '$(TEST_FILE)' -o '$(PREFIX)/$(TARGET)/bin/test-protobuf.exe' \
+        `'$(TARGET)-pkg-config' protobuf --cflags --libs`
+endef
 
-    $(if $(BUILD_CROSS),
-        '$(TARGET)-g++' \
-            -W -Wall -Werror -ansi -pedantic -std=c++14 \
-            '$(TEST_FILE)' -o '$(PREFIX)/$(TARGET)/bin/test-protobuf.exe' \
-            `'$(TARGET)-pkg-config' protobuf --cflags --libs`
-    )
+define $(PKG)_BUILD_$(BUILD)
+    cd '$(BUILD_DIR)' && cmake '$(SOURCE_DIR)' \
+        -DCMAKE_INSTALL_PREFIX='$(PREFIX)/$(BUILD)' \
+        -DCMAKE_PREFIX_PATH='$(PREFIX)/$(BUILD)' \
+        -DCMAKE_BUILD_TYPE=Release \
+        -DCMAKE_CXX_STANDARD=17 \
+        -Dprotobuf_BUILD_TESTS=OFF \
+        -Dprotobuf_BUILD_CONFORMANCE=OFF \
+        -Dprotobuf_BUILD_EXAMPLES=OFF \
+        -Dprotobuf_WITH_ZLIB=ON \
+        -Dprotobuf_LOCAL_DEPENDENCIES_ONLY=ON \
+        -Dprotobuf_ABSL_PROVIDER=package
+    cmake --build '$(BUILD_DIR)' --config Release -j '$(JOBS)'
+    cmake --build '$(BUILD_DIR)' --config Release --target install
 endef
