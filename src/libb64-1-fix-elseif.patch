@@ -1,0 +1,20 @@
+This file is part of MXE. See LICENSE.md for licensing information.
+
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: MXE <mxe@mxe>
+Subject: [PATCH] Fix invalid preprocessor directive #elseif -> #elif
+
+
+diff --git a/include/b64/ccommon.h b/include/b64/ccommon.h
+index 1111111..2222222 100644
+--- a/include/b64/ccommon.h
++++ b/include/b64/ccommon.h
+@@ -14,7 +14,7 @@
+ #ifndef HAVE_SIZE_T
+   #ifdef _WIN32
+     #include <crtdefs.h>
+-  #elseif defined (__unix__) || (defined (__APPLE__) && defined (__MACH__))
++  #elif defined (__unix__) || (defined (__APPLE__) && defined (__MACH__))
+     #include <stdlib.h>
+   #else
+     typedef unsigned long size_t;
